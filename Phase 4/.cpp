@@ -14,11 +14,11 @@ int main()
 	--p;
 	int p=200, q, r;
 	if(p<5) a=10;
-	printf("Hi\n");
+	cout<<"Hi"<<endl;
 	int =5;
 	int int;
 	a=p;
 	c = a+b*l;
-	
+	//cin>>a;
 	//printf("Hello World!\n");
 }
