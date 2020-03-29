@@ -29,7 +29,7 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Error Handing and Error Recovery (Done)
  ## 3. Phase 3 Semantic Analysis<br>
     - Type Checking, Declare before use (Done)
-    - Evaluate if, for, while (Pending)
+    - Evaluate if, for, while (Done)
     - break statements, access control (Pending)
  ## 4. Phase 4 Intermediate Code Generation
     - Generate three address code (Pending)
