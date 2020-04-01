@@ -12,11 +12,11 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Identify Keywords (Done)
     - Lexical Errors (Done)
     - Line Numbers  (Done)
-    - Truncate long identifiers (Done)
+    - Truncate long identifiers (Pending)
     - Symbol Table (Done)
 ##  2. Phase 2 Syntax Analysis<br>
     - Abstract Syntax Tree Construction (Done)
-    - Global & Local Variables Distinction (Done)
+    - Global & Local Variables Distinction (Partially Done)
     - Class Definition (Done)
     - Arrays/Pointers Definition (Done)
     - Arithmetic and Boolean Expressions (Done)
@@ -32,9 +32,9 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Evaluate if, for, while (Done)
     - break statements, access control (Pending)
  ## 4. Phase 4 Intermediate Code Generation
-    - Generate three address code (Pending)
-    - Quadruple format (Pending)
-    - Insert Temporaries to Symbol Table (Pending)
+    - Generate three address code (Done)
+    - Quadruple format (Done)
+    - Insert Temporaries to Symbol Table (Done)
 ##  5. Phase 5 Intermediate Code Optimization
     - Eliminate dead code (Pending)
     - Subexpression elimination (Pending)
