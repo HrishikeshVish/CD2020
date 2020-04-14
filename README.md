@@ -28,6 +28,7 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Valid Actions for grammar productions (Done)
     - use yyloc to print the error tokens (Pending)
     - Error Handing and Error Recovery (Done)
+    - #include Productions (Pending)
  ## 3. Phase 3 Semantic Analysis<br>
     - Type Checking, Declare before use (Done)
     - Evaluate if, for, while (Done)
@@ -43,7 +44,7 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Eliminate dead code (Done)
     - Subexpression elimination (Done)
     - Constant Folding, Propagation (Done)
-    - Loop Invariant code outside loop (Pending)
+    - Loop Invariant code outside loop (Done)
     - live Variable Analysis (Pending)
  ## 6. Phase 6 Target Code Generation
     - Assembly Code (Pending)
