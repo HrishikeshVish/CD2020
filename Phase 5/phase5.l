@@ -94,6 +94,8 @@ struct Stack* stack;
 "else"                  {printToken("ELSE"); return(ELSE);}
 "while"                 {printToken("WHILE"); return(WHILE);}
 "return"                    {printToken("RETURN"); return(RETURN);}
+"break"                    {printToken("BREAK"); return(BREAK);}
+"continue"                    {printToken("CONTINUE"); return(CONTINUE);}
 "void"                  {printToken("VOID");yylval.str = strdup(yytext); 
                          return(VOID);}
 "int"                   {printToken("INT");yylval.str = strdup(yytext); 
@@ -103,6 +105,7 @@ struct Stack* stack;
 "char"                  {printToken("CHAR"); yylval.str=strdup(yytext); return(CHAR);}
 "for"                   {printToken("FOR"); return FOR;}
 "class"                 {printToken("CLASS"); return CLASS;}
+"#include"				{printToken("PREPROCESSOR_DIRECTIVE"); return PREPROC;}
 "++"                {printToken("INC_OP");return INC_OP;} 
 "--"                {printToken("DEC_OP");return DEC_OP;} 
 "+"             {printToken("PLUS");return PLUS;}     
@@ -124,7 +127,7 @@ struct Stack* stack;
 ("[")               {printToken("LSQUAR");return LSQUAR; }
 ("]")               {printToken("RSQUAR");return RSQUAR;}
 ("{")               {printToken("LBRACE"); scope++; push(stack, scope); return LBRACE;}
-("}")               {printToken("RBRACE"); pop(stack); return RBRACE;}
+("}")               {printToken("RBRACE"); pop(stack);scope--; return RBRACE;}
 ";"             {printToken("SEMI");return SEMI;}
 ","             {printToken("COMMA");return COMMA;}
 "("             {printToken("LPAREN");return LPAREN;}
@@ -133,7 +136,7 @@ struct Stack* stack;
 {L}{A}*                 {printToken("ID");yylval.str = strdup(yytext); return ID;}
 {D}+            {printToken("NUMBER");yylval.str = strdup(yytext); return NUM;}
 {D}*"."{D}+     {printToken("FLOATINGPOINT");yylval.str = strdup(yytext); return FLT;}
-\"{TE}*{WS}*\"       {printToken("String"); yylval.str = strdup(yytext); return STR;}
+\"{TE}*{WS}*\"       {printToken("STRING"); yylval.str = strdup(yytext); return STR;}
 {WS}+                   {}
 .                   {printToken("UNKNOWN LEXEME");printToken(yytext);}
 

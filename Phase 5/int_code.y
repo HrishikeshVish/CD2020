@@ -26,6 +26,7 @@ int cflag=0, iflag=0, fflag=0;
 char* tab="  ";
 char indent[100]="";
 char type[200];
+char if_stmt_skip_label[10];
 char* integer="INT";
 char* floating="float";
 char* none = "none";
@@ -103,6 +104,9 @@ char* get_three_add(quadruple* record) {
     else if(strcmp(record->statement, "condition")==0){
     	sprintf(res, "%s", record->res);
     }
+    else if(strcmp(record->statement, "ARR")==0){
+    	sprintf(res, "ARR %s = %s", record->res, record->arg1);
+    }
     return res;
 }
 
@@ -143,7 +147,52 @@ char * get_previous_temp() {
     }
     return traversal->res;
 }
+
+char * get_dtype(char * str) {
+    int i=0;
+    char* type = (char*)malloc(sizeof(char)*10);
+    if(str[0]=='\"') {
+        strcpy(type,"STRING");
+        return type;
+    }
+    else if(str[0]=='\'') {
+        strcpy(type,"CHAR");
+        return type;
+    }
+    strcpy(type,"INT");
+    while(str[i]!='\0' && str[i]>=0 && str[i]<=9) {
+        i++;
+    }
+    if (str[i]=='\0') {
+        return type;
+    }
+    else if (str[i]=='.') {
+        strcpy(type,"FLOAT");
+        i++;
+        while(str[i]!='\0' && str[i]>=0 && str[i]<=9) {
+            i++;
+        }
+        if (str[i]=='\0') {
+        return type;
+    }
+    else {
+        strcpy(type,"INVALID");
+        return type;
+    }
+    }
+    
+}
 //end of quadruples code
+// Implementation of break and continue
+struct construct {
+    char start_label[10];
+    char stop_label[10];
+};
+
+typedef struct construct construct;
+construct current_construct;
+
+//end
 struct node{
     int nl;
     char name[100];
@@ -255,12 +304,12 @@ void update(list1 *root, char name[100], int scope,  char rhs[200]){
 void print(node *head){
     // printf("1\n");
     node *temp = head;
-    printf("__________________________________________________________________\n");
-    fprintf(symtab, "__________________________________________________________________\n");
+    printf("___________________________________________________________________\n");
+    fprintf(symtab, "___________________________________________________________________\n");
     printf("|Line      |Name      |Scope     |value     |id_type   |datatype  |\n");
     fprintf(symtab, "|Line      |Name      |Scope     |value     |id_type   |datatype  |\n");
-    printf("------------------------------------------------------------------\n");
-    fprintf(symtab, "------------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
+    fprintf(symtab, "-------------------------------------------------------------------\n");
     while(temp!=NULL){
 
         printf("|%-10d|%-10s|%-10d|%-10s|%-10s|%-10s|\n", temp->nl, temp->name, temp->scope, temp->rhs, temp->type, temp->dtype);
@@ -268,19 +317,29 @@ void print(node *head){
         temp=temp->next;
     }
 
-    printf("------------------------------------------------------------------\n");
-    fprintf(symtab, "------------------------------------------------------------------\n");
+    printf("-------------------------------------------------------------------\n");
+    fprintf(symtab, "-------------------------------------------------------------------\n");
+}
+
+void reset_scope(list1 *root, int current_scope) {
+    if(root == NULL || root->head == NULL){
+        return;
+    }
+    node *t2 = root->head;
+    while (t2!=NULL) {
+        if(t2->scope > current_scope) {
+            t2->scope=-1;
+        }
+        t2=t2->next;
+    }
 }
 
 struct expression_details{
-    int value;
+    //int value;
     char type[200];
 };
 typedef struct expression_details exp_det;
 exp_det det1;
-
-
-
 %}
 %code requires {
 
@@ -292,10 +351,10 @@ exp_det det1;
 	char *str;
 }
 
-%token IF ELSE WHILE RETURN VOID INT FLOAT CHAR FOR
+%token IF ELSE WHILE RETURN VOID INT FLOAT CHAR FOR BREAK CONTINUE
 %token INC_OP DEC_OP PLUS MINUS STAR SLASH  LT LTEQ GT GTEQ EQ NEQ ASSIGN  
 %token SEMI COMMA LPAREN RPAREN LSQUAR RSQUAR LBRACE RBRACE LCOMMENT RCOMMENT 
-%token <str> ID NUM FLT
+%token <str> ID NUM FLT CHR
 %token LETTER DIGIT
 %token NONTOKEN ERROR ENDFILE
 %token NL ENDL
@@ -303,16 +362,17 @@ exp_det det1;
 %token INSERTION EXTRACTION
 %token CIN COUT
 %token CLASS
+%token PREPROC
 %left PLUS MINUS
 %left STAR SLASH
 
 %nonassoc THEN
-%nonassoc LOWER_THAN_ELSE
-%nonassoc ELSE
+%nonassoc IF
+%nonassoc LOWER_THAN_IF
 
-
-%type<str> atree program external_declaration var_declaration init_declarator_list fun_declaration params_list compound_stmt declarator params block_item_list block_item call factor term additive_expression simple_expression unary_expression postfix_expression assignment_expression return_stmt while_stmt if_stmt expression statement args expression_stmt for_stmt
-%type<str> relop declaration_specifiers stream_constructs op
+%expect 2 
+%type<str> atree program external_declaration var_declaration init_declarator_list fun_declaration params_list compound_stmt declarator params block_item_list block_item call factor term additive_expression simple_expression unary_expression postfix_expression assignment_expression return_stmt while_stmt if_stmt else_if expression statement args expression_stmt for_stmt
+%type<str> relop declaration_specifiers stream_constructs op array_init
 
 %start atree
 %%
@@ -320,10 +380,12 @@ exp_det det1;
 atree:program {display_three_add(q_list1);}
 
 program 
-    : external_declaration {$$=$1; }
-    | program external_declaration { }
-    | class_declaration{}
-    | program class_declaration{}
+    : external_declaration {$$=$1;}
+    | program external_declaration {}
+    | program PREPROC LT ID GT {printf("%s\n", $4);}
+    | PREPROC LT ID GT {printf("%s\n", $3);}
+    | class_declaration {}
+    | program class_declaration {}
     ;
 
 external_declaration
@@ -331,39 +393,49 @@ external_declaration
     | fun_declaration {$$=$1;}
     ;
 class_declaration
-	: declaration_specifiers ID LBRACE external_declaration RBRACE SEMI {insert(list2, yylineno, $2, "class", peek(stack), " ", "class");}
+	: declaration_specifiers ID LBRACE external_declaration RBRACE SEMI {insert(list2, yylineno, $2, "class", scope, " ", "class");}
 var_declaration
     : declaration_specifiers init_declarator_list SEMI 
     {}
     | declaration_specifiers array_dec SEMI {}
     | error SEMI{yyerrok;}
     ;
+array_init
+    : LBRACE comma_list RBRACE {$<str>$=$<str>2;}
+    ;
+comma_list
+    : NUM COMMA comma_list {$<str>$=$<str>1;strcat($<str>$,",");strcat($<str>$,$<str>3);}
+    | NUM {$<str>$=$<str>1;} 
+    ;
 array_dec
-	: ID LSQUAR NUM RSQUAR {insert(list2, yylineno, $1, type, peek(stack), " ", "ARRAY");}
-	| STAR ID {insert(list2, yylineno, $2, type, peek(stack), " ", "PTR");}
+	: ID LSQUAR NUM RSQUAR {insert(list2, yylineno, $1, type, scope, " ", "ARRAY");}
+	| STAR ID {insert(list2, yylineno, $2, type, scope, " ", "PTR");}
+    | ID LSQUAR RSQUAR ASSIGN array_init { insert(list2, yylineno, $1, "int" , scope, $<str>5, "ARRAY");
+    									   quadruple * new_record = create_quadruple("ARR","",$5,"",$1, yylineno);
+                            			   insert_quadruple(q_list1,new_record);  }
 
 init_declarator_list
-    : ID {insert(list2, yylineno, $1, type, peek(stack), " ", "IDENT");}
+    : ID {insert(list2, yylineno, $1, type, scope, " ", "IDENT");}
     | ID ASSIGN expression {
                             char arg1[10];
                             sprintf(arg1,"%s",$3);
     						quadruple * new_record = create_quadruple("assignment","",arg1,"",$1, yylineno);
                             insert_quadruple(q_list1,new_record); 
-                            insert(list2, yylineno, $1, type, peek(stack), " ", "IDENT");
-                            update(list2, $1, peek(stack), $3);
+                            insert(list2, yylineno, $1, type, scope, " ", "IDENT");
+                            update(list2, $1, scope, $3);
                             iflag = 0;
                             fflag = 0;
                             cflag = 0; 
                         }
-    | init_declarator_list COMMA ID { insert(list2, yylineno, $3, type, peek(stack), " ", "IDENT"); 
+    | init_declarator_list COMMA ID { insert(list2, yylineno, $3, type, scope, " ", "IDENT"); 
     }
     | init_declarator_list COMMA ID ASSIGN expression {
                             char arg1[10];
                             sprintf(arg1,"%s",$5);
     						quadruple * new_record = create_quadruple("assignment","",arg1,"",$3, yylineno);
                             insert_quadruple(q_list1,new_record); 
-                            insert(list2, yylineno, $3, type, peek(stack), " ", "IDENT");
-                            update(list2, $3, peek(stack), $5);
+                            insert(list2, yylineno, $3, type, scope, " ", "IDENT");
+                            update(list2, $3, scope, $5);
                             iflag = 0;
                             fflag = 0;
                             cflag = 0; 
@@ -377,7 +449,7 @@ declarator
     ;
 
 fun_declaration
-    : declaration_specifiers ID declarator compound_stmt {insert(list2, yylineno, $2, type, peek(stack), " ", "FUNCT");}
+    : declaration_specifiers ID declarator compound_stmt {insert(list2, yylineno, $2, type, scope, " ", "FUNCT");}
     ;
 
 declaration_specifiers
@@ -403,7 +475,7 @@ params
     
 compound_stmt
     : LBRACE RBRACE {$$ = "$";}
-    | LBRACE block_item_list RBRACE {$$ = $2;}
+    | LBRACE block_item_list RBRACE {$$ = $2; reset_scope(list2,scope);}
     ;
 
 block_item_list
@@ -424,6 +496,33 @@ statement
     | return_stmt {$$=$1;}
     | for_stmt {$$ = $1;}
     | stream_constructs {$$ = $1;}
+    | break_stmt {}
+    | continue_stmt {}
+    ;
+
+break_stmt
+    : BREAK {
+        if (strcmp(current_construct.stop_label,"") !=0) {
+            quadruple* new_record;
+            new_record = create_quadruple("goto","","","",current_construct.stop_label, yylineno);
+            insert_quadruple(q_list1,new_record);
+        } else {
+            errors++;
+            printf("Error in Line %d : Wrong Usage of statement \"break\"...\n", yylineno);
+        }
+    }
+    ;
+continue_stmt
+    : CONTINUE {
+        if (strcmp(current_construct.start_label,"") !=0) {
+            quadruple* new_record;
+            new_record = create_quadruple("goto","","","",current_construct.start_label, yylineno);
+            insert_quadruple(q_list1,new_record);
+        } else {
+            errors++;
+            printf("Error in Line %d : Wrong Usage of statement \"continue\"...\n", yylineno);
+        }
+    }
     ;
 stream_constructs
 	: cout_cascade {}
@@ -437,7 +536,7 @@ cascade_out
 
 cin
 	: CIN EXTRACTION ID SEMI {
-					id_ex = find(list2, $3, peek(stack));
+					id_ex = find(list2, $3, scope);
 					if(id_ex == NULL){
 						printf("Error in Line %d : Usage before Declaration\n", yylineno);
 						errors++;
@@ -466,7 +565,7 @@ op
 	:NUM {$<str>$ = yylval.str;}
 	|STR {$<str>$ = yylval.str;}
 	|ID {
-		id_ex = find(list2, $1, peek(stack));
+		id_ex = find(list2, $1, scope);
 		if(id_ex == NULL){
 			printf("Error in Line %d : Usage before Declaration\n", yylineno);
 			errors++;
@@ -504,14 +603,59 @@ if_stmt
         insert_quadruple(q_list1,new_record);
         $<str>$=false_label;
     } statement {
-        quadruple* new_record = create_quadruple("label","","","",$<str>5, yylineno);
+        quadruple* new_record;
+        strcpy(if_stmt_skip_label,create_label());
+        new_record = create_quadruple("goto","","","",if_stmt_skip_label, yylineno); 
         insert_quadruple(q_list1,new_record);
-        
-    } else_stmt {}
+        new_record = create_quadruple("label","","","",$<str>5, yylineno);
+        insert_quadruple(q_list1,new_record);   
+    } else_if {
+        quadruple* new_record;
+        new_record = create_quadruple("label","","","",if_stmt_skip_label, yylineno);
+        insert_quadruple(q_list1,new_record);
+    }
     ;
-else_stmt : 
-        %prec LOWER_THAN_ELSE
-    | ELSE statement {}
+
+else_if :     
+    ELSE IF LPAREN expression RPAREN {
+        //printf("else if\n");
+        quadruple* new_record;
+        //Insert Condition
+        char statement_type[20],arg1[10],arg2[10],arg3[10],temp[10],true_label[10],false_label[10];
+        sprintf(statement_type,"conditional_goto");
+        strcpy(arg1,$<str>4);
+        strcpy(true_label,create_label());
+        new_record = create_quadruple(statement_type,arg1,"","",true_label, yylineno);
+        insert_quadruple(q_list1,new_record);
+        sprintf(statement_type,"goto");
+        strcpy(false_label,create_label());
+        new_record = create_quadruple(statement_type,"","","",false_label, yylineno); 
+        insert_quadruple(q_list1,new_record);
+        new_record = create_quadruple("label","","","",true_label, yylineno);
+        insert_quadruple(q_list1,new_record);
+        $<str>$=false_label;
+    } statement {
+        quadruple* new_record;
+        new_record = create_quadruple("goto","","","",if_stmt_skip_label, yylineno); 
+        insert_quadruple(q_list1,new_record);
+        new_record = create_quadruple("label","","","",$<str>6, yylineno);
+        insert_quadruple(q_list1,new_record);   
+    } else_if {}
+    | ELSE else_body  %prec LOWER_THAN_IF {
+        //printf("else\n");
+    }
+    | {}
+    ;
+    
+ else_body
+    : expression_stmt {$<str>$=$1;}
+    | compound_stmt {$<str>$=$1;}
+    | while_stmt {$<str>$=$1;}
+    | return_stmt {$<str>$=$1;}
+    | for_stmt {$<str>$ = $1;}
+    | stream_constructs {$<str>$ = $1;}
+    | break_stmt {}
+    | continue_stmt {}
     ;
 
 while_stmt
@@ -521,6 +665,7 @@ while_stmt
         strcpy(while_label,create_label());
         new_record = create_quadruple("label","","","",while_label, yylineno);
         insert_quadruple(q_list1,new_record);
+        strcpy(current_construct.start_label,while_label);
         $<str>$=while_label;} LPAREN expression RPAREN
         {
         quadruple* new_record;
@@ -534,6 +679,7 @@ while_stmt
         strcpy(false_label,create_label());
         new_record = create_quadruple(statement_type,"","","",false_label, yylineno); 
         insert_quadruple(q_list1,new_record);
+        strcpy(current_construct.stop_label,false_label);
         new_record = create_quadruple("label","","","",true_label, yylineno);
         insert_quadruple(q_list1,new_record);
         $<str>$=false_label;
@@ -542,6 +688,8 @@ while_stmt
         insert_quadruple(q_list1,new_record);
         new_record = create_quadruple("label","","","",$<str>6, yylineno);
         insert_quadruple(q_list1,new_record);
+        strcpy(current_construct.start_label,"");
+        strcpy(current_construct.stop_label,"");
     }
     ;
 
@@ -562,6 +710,7 @@ for_stmt
         strcpy(for_label,create_label());
         new_record = create_quadruple("label","","","",for_label, yylineno);
         insert_quadruple(q_list1,new_record);
+        strcpy(current_construct.start_label,for_label);
         $<str>$=for_label;
 	} 
 	simple_expression SEMI for_update RPAREN { 
@@ -575,6 +724,7 @@ for_stmt
         insert_quadruple(q_list1,new_record); 
         new_record = create_quadruple("label","","","",body_label, yylineno);
         insert_quadruple(q_list1,new_record);
+        strcpy(current_construct.stop_label,break_label);
         $<str>$=break_label;
         scope--;
     } statement {
@@ -595,6 +745,8 @@ for_stmt
         strcpy(break_label,$<str>11);
         new_record = create_quadruple("label","","","",break_label, yylineno);
         insert_quadruple(q_list1,new_record); 
+        strcpy(current_construct.start_label,"");
+        strcpy(current_construct.stop_label,"");
     }
     ;
 for_initialiser 
@@ -843,8 +995,7 @@ relop
 additive_expression
     : term {$$=$1;
         }
-    | additive_expression PLUS additive_expression {
-
+    | additive_expression PLUS additive_expression {        
         quadruple* new_record;
         
         char statement_type[20],arg1[10],arg2[10],arg3[10],temp[10];
@@ -878,10 +1029,9 @@ additive_expression
 
 term
     : factor {
-
               $$ = $1;
             }
-    | term STAR factor {
+    | term STAR term {
     	quadruple* new_record;
         
         char statement_type[20],arg1[10],arg2[10],arg3[10],temp[10];
@@ -896,7 +1046,7 @@ term
     	insert(list2, yylineno, temp,"TEMP", scope, $1, "TEMP");
     	$$ = temp;
 		}
-    | term SLASH factor {
+    | term SLASH term {
     	quadruple* new_record;
         
         char statement_type[20],arg1[10],arg2[10],arg3[10],temp[10];
@@ -916,7 +1066,10 @@ term
 factor
     : LPAREN expression RPAREN {$$=$2; }
     | ID {
-
+    	  if(yylineno == 1){
+    	  	$$ = $1;
+    	  }	
+    	  else{
           id_ex = find(list2, $1, scope);
           if(id_ex == NULL){
             printf("Error on %d, Assignment RHS not declared\n", yylineno);
@@ -924,18 +1077,20 @@ factor
             $$ = "$";}
           else{
           	$$ = $1;
-            
-            
-          }}
-    | call {$$=$1;}
+            strcpy(det1.type,id_ex->dtype);            
+          }}}
+    | call {
+        $$=$1;
+        }
     | NUM { 
            $$ = yylval.str;
-           
+           strcpy(det1.type,"int");
            }
     |FLT{
         $$ = yylval.str;
+        strcpy(det1.type,"float");
     	}
-    |STR {}
+    |STR {$$ = yylval.str;strcpy(det1.type,"string");}
     ;
     
 call
