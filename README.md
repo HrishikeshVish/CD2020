@@ -32,8 +32,8 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
  ## 3. Phase 3 Semantic Analysis<br>
     - Type Checking, Declare before use (Done)
     - Evaluate if, for, while (Done)
-    - Evaluate if-else block (Pending)
-    - break statements, access control (Pending)
+    - Evaluate if-else block (Done)
+    - break statements, access control (Done)
     - Modify Symbol table based on scope (Done)
     - Evaluate Complex Expressions (Done)
  ## 4. Phase 4 Intermediate Code Generation
