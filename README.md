@@ -20,6 +20,9 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Global & Local Variables Distinction (Done)
     - Class Definition (Done)
     - Arrays/Pointers Definition (Done)
+    - Using Arrays in loops, if statements (Done)
+    - Array subscript access (Done)
+    - Object creation with new keyword (Done)
     - Arithmetic and Boolean Expressions (Done)
     - Define if, while (Done)
     - Define For (Done)
@@ -35,6 +38,7 @@ A repository for Mini Project of Compiler Design, 6th Sem, Computer Science, PES
     - Evaluate if-else block (Done)
     - break statements, access control (Done)
     - Modify Symbol table based on scope (Done)
+    - Prevent multiple definitions of the variables (Done)
     - Evaluate Complex Expressions (Done)
  ## 4. Phase 4 Intermediate Code Generation
     - Generate three address code (Done)
